@@ -4,7 +4,7 @@
 };
     mic={
         "http":"https://ws.stream.qqmusic.qq.com/",//https://isure.stream.qqmusic.qq.com/
-        "api":"https://shenwu.net/music/api.php?types=url&id=",
+        "api":"https://music.valderfield.com/api.php?types=url&id=",
         get:function(url,callback,name){
             $.ajax({
                 url:url,
