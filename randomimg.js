@@ -47,7 +47,7 @@ randomimg = function (zhengjing,debug=false){
         }
     this.get_img = function(){
         if(this.pd){
-            return "https://tuapi.eees.cc/api.php?category=dongman&type=302&t="+rand(pc.length-1);
+            return "https://api.vvhan.com/api/wallpaper/acg";//+rand(pc.length-1);
         }else{
             return this.normal()
         }
