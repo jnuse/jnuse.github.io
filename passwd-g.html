@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>强密码生成器</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    body {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+    main.container {
+      max-width: 768px;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>强密码生成器</h1>
+    <article>
+      <header>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <hgroup>
+            <h3>生成密码</h3>
+            <p>点击下方按钮生成你的密码</p>
+          </hgroup>
+          <div>
+            <label for="theme-switcher">
+              <input type="checkbox" id="theme-switcher" name="theme-switcher" role="switch">
+              切换模式
+            </label>
+          </div>
+        </div>
+      </header>
+      
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="text" id="password" readonly placeholder="你的密码将显示在这里..." style="width: 100%;">
+        <button id="copy-password" class="secondary" style="width: fit-content;">复制</button>
+      </div>
+
+      <label for="length">密码长度: <span id="length-value">32</span></label>
+      <input type="range" min="8" max="128" value="32" id="length">
+
+      <div class="grid">
+        <label for="numbers">
+          <input type="checkbox" id="numbers" name="numbers" checked>
+          数字
+        </label>
+        <label for="lowercase">
+          <input type="checkbox" id="lowercase" name="lowercase" checked>
+          小写字母
+        </label>
+      </div>
+      <div class="grid">
+        <label for="uppercase">
+          <input type="checkbox" id="uppercase" name="uppercase" checked>
+          大写字母
+        </label>
+        <label for="symbols">
+          <input type="checkbox" id="symbols" name="symbols" checked>
+          符号
+        </label>
+      </div>
+
+      <label for="custom-symbols">自定义符号</label>
+      <input type="text" id="custom-symbols" name="custom-symbols" placeholder="!@#$%^&*()_+-=[]{}|;':,./<>?">
+      
+      <footer>
+        <button id="generate" class="contrast">生成密码</button>
+      </footer>
+    </article>
+  </main>
+
+  <script>
+    const passwordEl = document.getElementById('password');
+    const copyPasswordEl = document.getElementById('copy-password');
+    const lengthEl = document.getElementById('length');
+    const lengthValueEl = document.getElementById('length-value');
+    const numbersEl = document.getElementById('numbers');
+    const lowercaseEl = document.getElementById('lowercase');
+    const uppercaseEl = document.getElementById('uppercase');
+    const symbolsEl = document.getElementById('symbols');
+    const customSymbolsEl = document.getElementById('custom-symbols');
+    const generateEl = document.getElementById('generate');
+    const themeSwitcherEl = document.getElementById('theme-switcher');
+
+    const randomFunc = {
+      number: getRandomNumber,
+      lower: getRandomLower,
+      upper: getRandomUpper,
+      symbol: getRandomSymbol
+    };
+
+    lengthEl.addEventListener('input', (e) => {
+      lengthValueEl.innerText = e.target.value;
+    });
+
+    generateEl.addEventListener('click', () => {
+      const length = +lengthEl.value;
+      const hasNumbers = numbersEl.checked;
+      const hasLowercase = lowercaseEl.checked;
+      const hasUppercase = uppercaseEl.checked;
+      const hasSymbols = symbolsEl.checked;
+
+      passwordEl.value = generatePassword(
+        hasNumbers,
+        hasLowercase,
+        hasUppercase,
+        hasSymbols,
+        length
+      );
+    });
+
+    copyPasswordEl.addEventListener('click', () => {
+      const password = passwordEl.value;
+      if (!password) {
+        return;
+      }
+
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(password).then(() => {
+          alert('密码已复制到剪贴板');
+        });
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = password;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        alert('密码已复制到剪贴板');
+      }
+    });
+
+    function generatePassword(number, lower, upper, symbol, length) {
+      let generatedPassword = '';
+      const typesCount = number + lower + upper + symbol;
+      const typesArr = [{number}, {lower}, {upper}, {symbol}].filter(item => Object.values(item)[0]);
+      
+      if(typesCount === 0) {
+        return '';
+      }
+
+      for(let i=0; i<length; i+=typesCount) {
+        typesArr.forEach(type => {
+          const funcName = Object.keys(type)[0];
+          generatedPassword += randomFunc[funcName]();
+        });
+      }
+
+      const finalPassword = generatedPassword.slice(0, length);
+      return finalPassword;
+    }
+
+    function getRandomNumber() {
+      return String.fromCharCode(Math.floor(Math.random() * 10) + 48);
+    }
+
+    function getRandomLower() {
+      return String.fromCharCode(Math.floor(Math.random() * 26) + 97);
+    }
+
+    function getRandomUpper() {
+      return String.fromCharCode(Math.floor(Math.random() * 26) + 65);
+    }
+
+    function getRandomSymbol() {
+      const symbols = customSymbolsEl.value || "!@#$%^&*()_+-=[]{}|;':\",./<>?";
+      return symbols[Math.floor(Math.random() * symbols.length)];
+    }
+
+    themeSwitcherEl.addEventListener('change', () => {
+      document.documentElement.setAttribute('data-theme', themeSwitcherEl.checked ? 'dark' : 'light');
+    });
+  </script>
+</body>
+</html>
