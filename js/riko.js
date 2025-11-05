@@ -1,5 +1,5 @@
 //background
-if(window.location.hostname=='localhost'){rimg = new randomimg(true,"/img/all/randomimg/");}else{rimg = new randomimg(true);};
+if(window.location.hostname=='localhost'){rimg = new randomimg(true,"https://blog.pixiv.tech/randomimg/randomimg/");}else{rimg = new randomimg(true);};
 rimg.pd_network(function(xhr,status){
 if(status=="success")rimg.pd=0;
 if(status=="timeout")rimg.pd=1;
