@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>小月万能播放器 - ArtPlayer 全功能版</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 1. 引入 Tailwind CSS -->
+<script src="./tailwind.css"></script>
+
+<!-- 2. 引入 ArtPlayer 和 HLS.js -->
+<link rel="stylesheet" href="./artplayer.css">
+<script src="./hls.min.js"></script>
+<script src="./artplayer.js"></script>
+
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+<!-- 播放器容器 -->
+<div id="artplayer-container" class="w-full max-w-4xl mx-auto shadow-2xl rounded-lg overflow-hidden aspect-[16/9]" style="display: none;"></div>
+
+<!-- 输入界面容器 -->
+<div id="input-container" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-center text-slate-800">小月万能播放器</h1>
+        <p class="text-center text-slate-500 mt-2">ArtPlayer 内核 · 全功能版</p>
+    </div>
+    <div class="space-y-2">
+        <label for="url-input" class="block text-sm font-medium text-slate-700">输入网络视频地址</label>
+        <div class="flex space-x-2">
+            <input id="url-input" type="text" placeholder="https://..." class="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+            <button id="play-button" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-300">播放</button>
+        </div>
+    </div>
+    <div class="flex items-center">
+        <div class="flex-grow bg-slate-200 h-px"></div>
+        <span class="mx-4 text-slate-400 font-medium">或</span>
+        <div class="flex-grow bg-slate-200 h-px"></div>
+    </div>
+    <div class="space-y-2">
+        <label for="file-input" class="block text-sm font-medium text-slate-700">选择本地视频文件</label>
+        <input id="file-input" type="file" accept="video/*,.ts" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer">
+    </div>
+</div>
+
+<script>
+    /**
+     * 初始化 ArtPlayer 播放器 (功能全开版)
+     * @param {string} videoUrl - 视频地址
+     * @param {string} posterUrl - 封面图片地址
+     * @param {string} videoTitle - 视频标题
+     */
+    function initializePlayer(videoUrl, posterUrl, videoTitle = '视频播放') {
+        const inputContainer = document.getElementById('input-container');
+        const playerContainer = document.getElementById('artplayer-container');
+        
+        if (inputContainer) inputContainer.style.display = 'none';
+        playerContainer.style.display = 'block';
+
+        function getType(url) {
+            try {
+                const urlPath = new URL(url, window.location.href).pathname;
+                if (urlPath.toLowerCase().endsWith('.m3u8')) {
+                    return 'm3u8';
+                }
+            } catch (e) { /* Blob URL 会解析失败，忽略 */ }
+            return undefined;
+        }
+        
+        const videoType = getType(videoUrl);
+
+        // 创建播放器配置对象
+        const artplayerOptions = {
+            container: '#artplayer-container',
+            url: videoUrl,
+            poster: posterUrl,
+            title: videoTitle,
+            volume: 0.7,
+            autoSize: true,
+
+            // --- 功能最大化配置 ---
+            setting: true,
+            playbackRate: true,
+            aspectRatio: true,
+            flip: true,
+            pip: true,
+            screenshot: true,
+            fullscreen: true,
+            fullscreenWeb: true,
+            mini: true,
+            airplay: true,
+            hotkey: true,
+            mutex: true,
+            
+            // 自定义 HLS (m3u8) 处理逻辑
+            customType: {
+                m3u8: function (video, url, art) {
+                    if (Hls.isSupported()) {
+                        const hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        video.src = url;
+                    } else {
+                        art.notice.show('您的浏览器不支持 HLS 播放');
+                    }
+                },
+            },
+        };
+
+        // 动态添加 type 属性，避免 undefined 错误
+        if (videoType) {
+            artplayerOptions.type = videoType;
+        }
+
+        // 初始化 ArtPlayer
+        const art = new Artplayer(artplayerOptions);
+    }
+
+    // --- 主逻辑 (保持不变) ---
+    const params = new URLSearchParams(location.search);
+    let videoUrl = params.get('url');
+
+    if (videoUrl) {
+        const posterUrl = params.get('p') || '';
+        const needsDecode = params.has('decode');
+        
+        if (needsDecode) {
+            try { videoUrl = atob(decodeURIComponent(videoUrl)); } catch (e) { console.error("Base64 解码失败:", e); alert("视频链接解码失败！"); videoUrl = ''; }
+        }
+        
+        if (videoUrl) {
+            initializePlayer(videoUrl, posterUrl, '网络视频');
+        }
+    } else {
+        const playButton = document.getElementById('play-button');
+        const fileInput = document.getElementById('file-input');
+        
+        playButton.onclick = function() {
+            const urlToPlay = document.getElementById('url-input').value.trim();
+            if (urlToPlay) {
+                const encodedUrl = btoa(urlToPlay);
+                window.location.search = `?url=${encodeURIComponent(encodedUrl)}&decode=true`;
+            } else { alert('请输入视频链接哦！'); }
+        };
+
+        fileInput.onchange = function() {
+            if (!this.files || this.files.length === 0) return;
+            const file = this.files[0];
+            let fileUrl;
+
+            if (file.name.toLowerCase().endsWith(".ts")) {
+                const tsUrl = URL.createObjectURL(file);
+                const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\n${tsUrl}\n#EXT-X-ENDLIST`;
+                const m3u8Blob = new Blob([m3u8Content], { type: 'application/vnd.apple.mpegurl' });
+                fileUrl = URL.createObjectURL(m3u8Blob);
+            } else {
+                fileUrl = URL.createObjectURL(file);
+            }
+            initializePlayer(fileUrl, '', file.name);
+        };
+    }
+</script>
+
+</body>
+</html>
