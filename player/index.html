@@ -16,8 +16,8 @@
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-<!-- 播放器容器 -->
-<div id="artplayer-container" class="w-full max-w-4xl mx-auto shadow-2xl rounded-lg overflow-hidden aspect-[16/9]" style="display: none;"></div>
+<!-- 播放器容器 aspect-[9/16] aspect-[16/9]-->
+<div id="artplayer-container" class="w-full max-w-4xl mx-auto shadow-2xl rounded-lg overflow-hidden " style="display: none;"></div>
 
 <!-- 输入界面容器 -->
 <div id="input-container" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg space-y-6">
@@ -44,6 +44,42 @@
 </div>
 
 <script>
+    
+    const playerContainer = document.getElementById('artplayer-container');
+    const inputContainer = document.getElementById('input-container');
+
+    function playVideoWithDynamicAspectRatio(url,posterUrl, title) {
+        const tempVideo = document.createElement('video');
+        tempVideo.style.display = 'none';
+        document.body.appendChild(tempVideo);
+
+        tempVideo.addEventListener('loadedmetadata', function() {
+            const videoWidth = tempVideo.videoWidth;
+            const videoHeight = tempVideo.videoHeight;
+            
+            playerContainer.className = playerContainer.className.replace(/aspect-$$.*?$$/g, '');
+
+            if (videoWidth > videoHeight) {
+                playerContainer.classList.add('aspect-[16/9]');
+            } else {
+                playerContainer.classList.add('aspect-[9/16]');
+            }
+            
+            document.body.removeChild(tempVideo);
+            initializePlayer(url, posterUrl, title);
+        }, { once: true });
+        
+        tempVideo.addEventListener('error', function() {
+            console.warn('预加载失败，使用默认宽高比播放。');
+            playerContainer.classList.add('aspect-[16/9]');
+            document.body.removeChild(tempVideo);
+            initializePlayer(url, posterUrl, title);
+        }, { once: true });
+        
+        tempVideo.crossOrigin = 'anonymous';
+        tempVideo.src = url;
+    }
+
     /**
      * 初始化 ArtPlayer 播放器 (功能全开版)
      * @param {string} videoUrl - 视频地址
@@ -51,8 +87,6 @@
      * @param {string} videoTitle - 视频标题
      */
     function initializePlayer(videoUrl, posterUrl, videoTitle = '视频播放') {
-        const inputContainer = document.getElementById('input-container');
-        const playerContainer = document.getElementById('artplayer-container');
         
         if (inputContainer) inputContainer.style.display = 'none';
         playerContainer.style.display = 'block';
@@ -135,7 +169,7 @@
         }
         
         if (videoUrl) {
-            initializePlayer(videoUrl, posterUrl, '网络视频');
+            playVideoWithDynamicAspectRatio(videoUrl, posterUrl, '网络视频');
         }
     } else {
         const playButton = document.getElementById('play-button');
@@ -152,18 +186,51 @@
         fileInput.onchange = function() {
             if (!this.files || this.files.length === 0) return;
             const file = this.files[0];
-            let fileUrl;
+            const fileUrl = URL.createObjectURL(file);
 
-            if (file.name.toLowerCase().endsWith(".ts")) {
-                const tsUrl = URL.createObjectURL(file);
-                const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\n${tsUrl}\n#EXT-X-ENDLIST`;
-                const m3u8Blob = new Blob([m3u8Content], { type: 'application/vnd.apple.mpegurl' });
-                fileUrl = URL.createObjectURL(m3u8Blob);
-            } else {
-                fileUrl = URL.createObjectURL(file);
-            }
-            initializePlayer(fileUrl, '', file.name);
+            // --- 魔法开始的地方 ---
+            // 1. 创建一个临时的、看不见的 video 元素
+            const tempVideo = document.createElement('video');
+            tempVideo.style.display = 'none'; // 确保它不显示在页面上
+            document.body.appendChild(tempVideo); // 需要添加到 DOM 中才能触发事件
+
+            // 2. 监听 loadedmetadata 事件
+            tempVideo.addEventListener('loadedmetadata', function() {
+                // 3. 获取视频的真实宽高
+                const videoWidth = tempVideo.videoWidth;
+                const videoHeight = tempVideo.videoHeight;
+                
+                // 4. 计算宽高比并设置 class
+                if (videoWidth > 0 && videoHeight > 0) {
+                    // 移除可能存在的旧 aspect class
+                    playerContainer.classList.remove('aspect-[16/9]', 'aspect-[9/16]');
+                    
+                    if (videoWidth > videoHeight) {
+                        // 横屏视频
+                        playerContainer.classList.add('aspect-[16/9]');
+                    } else {
+                        // 竖屏或方形视频
+                        playerContainer.classList.add('aspect-[9/16]');
+                    }
+                }
+                
+                // --- 善后工作 ---
+                // 5. 移除临时 video 元素
+                document.body.removeChild(tempVideo);
+                // 释放上一个 object URL，避免内存泄漏
+                // URL.revokeObjectURL(tempVideo.src);
+
+                // 6. ✨ 现在才初始化 ArtPlayer ✨
+                // 注意：本地文件我们不需要再特殊处理 .ts 了，ArtPlayer 配合 HLS.js 可以直接处理 Blob URL
+                initializePlayer(fileUrl, '', file.name);
+
+            }, { once: true }); // once: true 表示这个事件监听器触发一次后就自动移除
+
+            // 7. 把文件 URL 设置给临时 video，启动加载过程
+            tempVideo.src = fileUrl;
         };
+
+
     }
 </script>
 
